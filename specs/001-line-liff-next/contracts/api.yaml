@@ -1,0 +1,323 @@
+openapi: 3.0.3
+info:
+  title: LINE LIFF Reservation System API
+  description: API for managing reservations through LINE LIFF app
+  version: 1.0.0
+
+servers:
+  - url: /api
+    description: Next.js API routes
+
+paths:
+  /services:
+    get:
+      summary: Get available services
+      tags: [Services]
+      responses:
+        '200':
+          description: List of available services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+
+  /services/{serviceId}/timeslots:
+    get:
+      summary: Get available time slots for a service
+      tags: [TimeSlots]
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: date
+          in: query
+          required: true
+          description: Date in YYYY-MM-DD format
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Available time slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TimeSlot'
+
+  /reservations:
+    post:
+      summary: Create a new reservation
+      tags: [Reservations]
+      security:
+        - LineAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReservationRequest'
+      responses:
+        '201':
+          description: Reservation created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '400':
+          description: Invalid request data
+        '401':
+          description: Unauthorized - invalid LINE token
+        '409':
+          description: Time slot no longer available
+
+    get:
+      summary: Get user's reservations
+      tags: [Reservations]
+      security:
+        - LineAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, CONFIRMED, CANCELLED, COMPLETED, NO_SHOW]
+      responses:
+        '200':
+          description: User's reservations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+
+  /reservations/{reservationId}:
+    get:
+      summary: Get reservation details
+      tags: [Reservations]
+      security:
+        - LineAuth: []
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Reservation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '404':
+          description: Reservation not found
+
+    patch:
+      summary: Update reservation (cancel/modify)
+      tags: [Reservations]
+      security:
+        - LineAuth: []
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReservationRequest'
+      responses:
+        '200':
+          description: Reservation updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '400':
+          description: Invalid update request
+        '403':
+          description: Update not allowed (e.g., cancellation deadline passed)
+
+components:
+  securitySchemes:
+    LineAuth:
+      type: http
+      scheme: bearer
+      description: LINE LIFF access token
+
+  schemas:
+    Service:
+      type: object
+      required:
+        - id
+        - name
+        - duration
+        - maxCapacity
+        - advanceBookingHours
+        - cancellationHours
+        - isActive
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "アクセスバース"
+          enum: ["アクセスバース", "霊視オラクルリーディング", "エネルギークリアリング"]
+        description:
+          type: string
+          nullable: true
+        duration:
+          type: integer
+          minimum: 30
+          example: 60
+          enum: [30, 60, 90]
+        price:
+          type: number
+          format: decimal
+          nullable: true
+        maxCapacity:
+          type: integer
+          minimum: 1
+          example: 1
+        advanceBookingHours:
+          type: integer
+          minimum: 0
+          example: 24
+        cancellationHours:
+          type: integer
+          minimum: 0
+          example: 2
+        isActive:
+          type: boolean
+
+    TimeSlot:
+      type: object
+      required:
+        - id
+        - serviceId
+        - startTime
+        - endTime
+        - isAvailable
+      properties:
+        id:
+          type: string
+          format: uuid
+        serviceId:
+          type: string
+          format: uuid
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        isAvailable:
+          type: boolean
+
+    Reservation:
+      type: object
+      required:
+        - id
+        - userId
+        - serviceId
+        - timeSlotId
+        - bookingReference
+        - status
+        - customerName
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        serviceId:
+          type: string
+          format: uuid
+        timeSlotId:
+          type: string
+          format: uuid
+        bookingReference:
+          type: string
+          example: "RES-20250922-001"
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, CANCELLED, COMPLETED, NO_SHOW]
+        customerName:
+          type: string
+        customerPhone:
+          type: string
+          nullable: true
+        customerEmail:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        service:
+          $ref: '#/components/schemas/Service'
+        timeSlot:
+          $ref: '#/components/schemas/TimeSlot'
+
+    CreateReservationRequest:
+      type: object
+      required:
+        - serviceId
+        - timeSlotId
+        - customerName
+      properties:
+        serviceId:
+          type: string
+          format: uuid
+        timeSlotId:
+          type: string
+          format: uuid
+        customerName:
+          type: string
+        customerPhone:
+          type: string
+          nullable: true
+        customerEmail:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    UpdateReservationRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [CANCELLED]
+        notes:
+          type: string

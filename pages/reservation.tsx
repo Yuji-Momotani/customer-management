@@ -9,7 +9,7 @@ interface SelectedService {
   serviceId: number
   priceId: number
   serviceName: string
-  time: number
+  time: number | null
   price: number
 }
 
@@ -35,7 +35,7 @@ const ReservationPage: React.FC = () => {
     serviceId: number, 
     priceId: number, 
     serviceName: string, 
-    time: number, 
+    time: number | null, 
     price: number
   ) => {
     setSelectedService({ serviceId, priceId, serviceName, time, price })
@@ -59,7 +59,7 @@ const ReservationPage: React.FC = () => {
       // 1. ユーザープロフィールを作成または取得
       let userId: number
       
-      const { data: existingUser, error: userFetchError } = await supabase
+      const { data: existingUser } = await supabase
         .from('user_profiles')
         .select('id')
         .eq('user_line_id', userLineId)

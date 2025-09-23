@@ -5,7 +5,7 @@ interface BookingFormProps {
     serviceId: number
     priceId: number
     serviceName: string
-    time: number
+    time: number | null
     price: number
   } | null
   onSubmit: (data: {
@@ -106,7 +106,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
         <h4 className="font-medium text-blue-800 mb-2">選択したサービス</h4>
         <div className="text-blue-700">
           <p className="font-semibold">{selectedService.serviceName}</p>
-          <p>{selectedService.time}分 - ¥{selectedService.price.toLocaleString()}</p>
+          <p>{selectedService.time ? `${selectedService.time}分` : '1回'} - ¥{selectedService.price.toLocaleString()}</p>
         </div>
       </div>
 

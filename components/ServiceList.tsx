@@ -20,17 +20,6 @@ const ServiceList: React.FC<ServiceListProps> = ({
   const hasOtherServiceSelected = selectedService?.service_name !== 'エネルギークリアリング'
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
-      {/* ヘッダーセクション */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mb-4">
-          <span className="text-2xl text-white">🌸</span>
-        </div>
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
-          ヒーリングサービス
-        </h1>
-        <p className="text-gray-600">お好みのサービスをお選びください</p>
-      </div>
-      
       {/* サービスグリッド */}
       <div className="grid gap-6 md:gap-8">
         {services.map((service) => (

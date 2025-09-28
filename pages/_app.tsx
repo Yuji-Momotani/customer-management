@@ -9,6 +9,12 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   // Execute liff.init() when the app is initialized
   useEffect(() => {
+    // 開発環境ではLIFF初期化をスキップ
+    if (process.env.NEXT_PUBLIC_ENV === 'development' || !process.env.NEXT_PUBLIC_LIFF_ID) {
+      console.log("Development mode: skipping LIFF init in _app.tsx");
+      return;
+    }
+
     // to avoid `window is not defined` error
     import("@line/liff")
       .then((liff) => liff.default)

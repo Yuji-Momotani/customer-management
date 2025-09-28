@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Head from 'next/head'
+import Image from 'next/image'
+import liff from '@line/liff'
 import { useServices } from '../hooks/useServices'
 import { supabase, ReservationInsert } from '../lib/supabase'
 import ServiceList from '../components/ServiceList'
@@ -20,15 +22,55 @@ const ReservationPage: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
-  // LIFF初期化の準備（後で実装）
+  // LIFF初期化
   const [liffReady, setLiffReady] = useState(false)
   const [userLineId, setUserLineId] = useState<string | null>(null)
+  const [userProfile, setUserProfile] = useState<{
+    displayName: string
+    pictureUrl?: string
+  } | null>(null)
+  const [liffError, setLiffError] = useState<string | null>(null)
 
   useEffect(() => {
-    // LIFF初期化をスキップしてテスト
-    setUserLineId('dummy-line-user-id')
-    setLiffReady(true)
-    console.log('LIFF ready set to true')
+    const initLiff = async () => {
+      try {
+        console.log('Initializing LIFF...')
+        await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! })
+        
+        if (liff.isLoggedIn()) {
+          // ユーザープロフィール取得
+          const profile = await liff.getProfile()
+          const decodedIdToken = liff.getDecodedIDToken()
+          const lineUserId = decodedIdToken?.sub || profile.userId
+          
+          setUserLineId(lineUserId)
+          setUserProfile({
+            displayName: profile.displayName,
+            pictureUrl: profile.pictureUrl
+          })
+          
+          console.log('LIFF initialized successfully:', profile)
+        } else {
+          // 未ログインの場合はログインページに誘導
+          liff.login()
+        }
+        
+        setLiffReady(true)
+      } catch (error) {
+        console.error('LIFF initialization failed:', error)
+        setLiffError(error instanceof Error ? error.message : 'LIFF初期化に失敗しました')
+        
+        // 開発環境では仮のデータで続行
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Development mode: using dummy data')
+          setUserLineId('dummy-line-user-id')
+          setUserProfile({ displayName: 'テストユーザー' })
+          setLiffReady(true)
+        }
+      }
+    }
+
+    initLiff()
   }, [])
 
   const handleServiceSelect = (
@@ -140,6 +182,27 @@ const ReservationPage: React.FC = () => {
         <div className="container mx-auto px-4 py-6 max-w-2xl">
           {/* ヘッダー */}
           <div className="text-center mb-8">
+            {/* ユーザー歓迎メッセージ */}
+            {userProfile && (
+              <div className="flex items-center justify-center mb-4">
+                {userProfile.pictureUrl && (
+                  <Image 
+                    src={userProfile.pictureUrl} 
+                    alt={userProfile.displayName}
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 rounded-full mr-3 border-2 border-purple-200"
+                  />
+                )}
+                <div className="text-left">
+                  <p className="text-lg font-semibold text-purple-700">
+                    {userProfile.displayName}さん、いらっしゃいませ！
+                  </p>
+                  <p className="text-sm text-gray-600">お疲れ様でした</p>
+                </div>
+              </div>
+            )}
+            
             <h1 className="text-2xl font-bold text-gray-800 mb-2">
               ヒーリングサロン予約
             </h1>
@@ -147,6 +210,19 @@ const ReservationPage: React.FC = () => {
               お好みのサービスと日時を選択してください
             </p>
           </div>
+          
+          {/* LIFF エラー表示 */}
+          {liffError && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-amber-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <span className="text-amber-800 font-medium">LINE初期化エラー</span>
+              </div>
+              <p className="text-amber-700 text-sm mt-1">{liffError}</p>
+            </div>
+          )}
 
           {/* 成功メッセージ */}
           {submitSuccess && (

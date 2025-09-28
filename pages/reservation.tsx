@@ -6,6 +6,7 @@ import { useServices } from '../hooks/useServices'
 import { supabase, ReservationInsert } from '../lib/supabase'
 import ServiceList from '../components/ServiceList'
 import BookingForm from '../components/BookingForm'
+import LineLoginError from '../components/LineLoginError'
 
 interface SelectedService {
   serviceId: number
@@ -32,7 +33,23 @@ const ReservationPage: React.FC = () => {
   const [liffError, setLiffError] = useState<string | null>(null)
 
   useEffect(() => {
+    // 最初に環境変数をチェック
+    console.log('NEXT_PUBLIC_ENV:', process.env.NEXT_PUBLIC_ENV)
+    console.log('NEXT_PUBLIC_LIFF_ID:', process.env.NEXT_PUBLIC_LIFF_ID)
+    
     const initLiff = async () => {
+      // 開発環境では直接ダミーデータを使用
+      if (process.env.NEXT_PUBLIC_ENV === 'development' || !process.env.NEXT_PUBLIC_LIFF_ID) {
+        console.log('Development mode: using dummy data')
+        setUserLineId('dummy-line-user-id')
+        setUserProfile({ 
+          displayName: 'テストユーザー',
+          pictureUrl: '/logo.jpg'
+        })
+        setLiffReady(true)
+        return
+      }
+
       try {
         console.log('Initializing LIFF...')
         await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! })
@@ -59,14 +76,7 @@ const ReservationPage: React.FC = () => {
       } catch (error) {
         console.error('LIFF initialization failed:', error)
         setLiffError(error instanceof Error ? error.message : 'LIFF初期化に失敗しました')
-        
-        // 開発環境では仮のデータで続行
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Development mode: using dummy data')
-          setUserLineId('dummy-line-user-id')
-          setUserProfile({ displayName: 'テストユーザー' })
-          setLiffReady(true)
-        }
+        setLiffReady(true)
       }
     }
 
@@ -170,6 +180,15 @@ const ReservationPage: React.FC = () => {
     )
   }
 
+  // LINEログインエラーまたはユーザー情報が取得できない場合
+  if (liffError && process.env.NEXT_PUBLIC_ENV !== 'development') {
+    return <LineLoginError error={liffError} />
+  }
+
+  if (!userProfile && process.env.NEXT_PUBLIC_ENV !== 'development') {
+    return <LineLoginError error="ユーザー情報を取得できませんでした" />
+  }
+
   return (
     <>
       <Head>
@@ -179,33 +198,57 @@ const ReservationPage: React.FC = () => {
       </Head>
 
       <div className="min-h-screen bg-gray-50">
+        {/* フルワイドヘッダー */}
+        <div className="w-full mb-8 py-6" style={{backgroundColor: '#453322'}}>
+					{/* ロゴ画像 */}
+					<div className="w-full flex justify-center">
+						<img 
+							src="/header-logo.png"
+							alt="ヒーリングサロン"
+							className="max-w-full h-auto max-h-40 shadow-xl object-contain"
+						/>
+					</div>
+        </div>
+        
         <div className="container mx-auto px-4 py-6 max-w-2xl">
-          {/* ヘッダー */}
+          {/* メインコンテンツ */}
           <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold text-gray-800 mb-6">
+              ヒーリングサロン予約
+            </h1>
+            
             {/* ユーザー歓迎メッセージ */}
             {userProfile && (
-              <div className="flex items-center justify-center mb-4">
-                {userProfile.pictureUrl && (
+              <div className="flex flex-col items-center mb-6">
+                {userProfile.pictureUrl ? (
                   <Image 
                     src={userProfile.pictureUrl} 
                     alt={userProfile.displayName}
-                    width={48}
-                    height={48}
-                    className="w-12 h-12 rounded-full mr-3 border-2 border-purple-200"
+                    width={96}
+                    height={96}
+                    className="w-24 h-24 rounded-full mb-2 border-2 border-purple-200"
+                    onError={(e) => {
+                      console.error('Image load error:', e)
+                      const target = e.target as HTMLImageElement
+                      target.style.display = 'none'
+                    }}
                   />
+                ) : (
+                  <div className="w-24 h-24 rounded-full mb-2 border-2 border-purple-200 bg-purple-100 flex items-center justify-center">
+                    <svg className="w-12 h-12 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                    </svg>
+                  </div>
                 )}
-                <div className="text-left">
-                  <p className="text-lg font-semibold text-purple-700">
-                    {userProfile.displayName}さん、いらっしゃいませ！
-                  </p>
-                  <p className="text-sm text-gray-600">お疲れ様でした</p>
-                </div>
+                <p className="text-lg font-semibold text-purple-700">
+                  {userProfile.displayName}さん、いらっしゃいませ！
+                </p>
               </div>
             )}
             
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">
-              ヒーリングサロン予約
-            </h1>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+              ヒーリングサービス
+            </h2>
             <p className="text-gray-600">
               お好みのサービスと日時を選択してください
             </p>

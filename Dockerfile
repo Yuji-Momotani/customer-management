@@ -1,43 +1,19 @@
-FROM node:18-alpine AS base
+# 開発環境用の設定
+FROM node:18-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-
-RUN npm ci --only=production && npm cache clean --force
-
-FROM node:18-alpine AS deps
-WORKDIR /app
+# パッケージファイルをコピーして依存関係をインストール
 COPY package*.json ./
 RUN npm ci
 
-FROM node:18-alpine AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# ソースコードをコピー
 COPY . .
 
-ENV NEXT_TELEMETRY_DISABLED 1
-
-RUN npm run build
-
-FROM node:18-alpine AS runner
-WORKDIR /app
-
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-USER nextjs
+# 環境変数を設定
+ENV NEXT_TELEMETRY_DISABLED=1
 
 EXPOSE 3000
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
-
-CMD ["node", "server.js"]
+# 開発サーバーを起動
+CMD ["npm", "run", "dev"]
